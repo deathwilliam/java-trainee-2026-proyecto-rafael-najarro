@@ -1,0 +1,240 @@
+classDiagram
+    Proveedor "1" -- "0..*" Servicio : ofrece
+    Servicio "1" -- "0..*" CuentaServicio : identifica
+    Cliente "1" -- "0..*" CuentaServicio : posee
+    CuentaServicio "1" -- "0..*" Factura : recibe
+    Factura "1" -- "0..1" Pago : se_cobra_con
+    Sucursal "1" -- "0..*" Caja : contiene
+    Sucursal "1" -- "0..*" Empleado : emplea
+    Caja "1" -- "0..*" SesionCaja : registra
+    Empleado "1" -- "0..*" SesionCaja : opera
+    SesionCaja "1" -- "0..*" Pago : procesa
+    SesionCaja "1" -- "0..*" MovimientoCaja : registra
+    Pago "0..1" -- "1" MovimientoCaja : genera
+    Usuario "1" -- "0..*" MovimientoCaja : ejecuta
+    Usuario "1" -- "0..*" BitacoraOperacion : realiza
+    Usuario "0..1" -- "0..1" Cliente : habilita_consulta
+    Usuario "1" -- "0..1" Empleado : habilita_operacion
+    Usuario "1" -- "0..*" UsuarioRol : recibe
+    Rol "1" -- "0..*" UsuarioRol : se_asigna_en
+    CuentaServicio ..> EstadoCuentaServicio : estado
+    Factura ..> EstadoFactura : estado
+    SesionCaja ..> EstadoSesionCaja : estado
+    MovimientoCaja ..> TipoMovimientoCaja : tipo
+    BitacoraOperacion ..> TipoOperacion : tipoOperacion
+    BitacoraOperacion ..> ResultadoOperacion : resultado
+    class Cliente {
+        -Long id
+        -Usuario usuario
+        -String dui
+        -String nombres
+        -String apellidos
+        -String telefono
+        -String correo
+        -Boolean activo
+        -LocalDateTime creadoEn
+
+        +activar() void
+        +desactivar() void
+    }
+    class Proveedor {
+        -Long id
+        -String codigo
+        -String nombre
+        -Boolean activo
+        -LocalDateTime creadoEn
+
+        +activar() void
+        +desactivar() void
+    }
+    class Servicio {
+        -Long id
+        -Proveedor proveedor
+        -String codigo
+        -String nombre
+        -BigDecimal comision
+        -Boolean activo
+        -LocalDateTime creadoEn
+
+        +activar() void
+        +desactivar() void
+        +cambiarComision(BigDecimal nuevaComision) void
+    }
+    class CuentaServicio {
+        -Long id
+        -Cliente cliente
+        -Servicio servicio
+        -String referencia
+        -String descripcion
+        -EstadoCuentaServicio estado
+        -LocalDateTime creadoEn
+
+        +activar() void
+        +desactivar() void
+        +estaActiva() Boolean
+    }
+    class EstadoCuentaServicio {
+        <<enumeration>>
+        ACTIVA
+        INACTIVA
+    }
+    class Factura {
+        -Long id
+        -CuentaServicio cuentaServicio
+        -String numeroFactura
+        -LocalDate periodo
+        -BigDecimal monto
+        -LocalDate fechaEmision
+        -LocalDate fechaVencimiento
+        -EstadoFactura estado
+        -LocalDateTime creadoEn
+
+        +estaPendiente() Boolean
+        +marcarPagada() void
+    }
+    class EstadoFactura {
+        <<enumeration>>
+        PENDIENTE
+        PAGADA
+    }
+    class Pago {
+        -Long id
+        -Factura factura
+        -SesionCaja sesionCaja
+        -String numeroComprobante
+        -BigDecimal comisionAplicada
+        -BigDecimal efectivoRecibido
+        -LocalDateTime fechaHora
+
+        +calcularTotal() BigDecimal
+        +calcularCambio() BigDecimal
+    }
+    class Sucursal {
+        -Long id
+        -String codigo
+        -String nombre
+        -String direccion
+        -Boolean activo
+        -LocalDateTime creadoEn
+
+        +activar() void
+        +desactivar() void
+    }
+    class Caja {
+        -Long id
+        -Sucursal sucursal
+        -String codigo
+        -String nombre
+        -Boolean activo
+        -LocalDateTime creadoEn
+
+        +activar() void
+        +desactivar() void
+    }
+    class SesionCaja {
+        -Long id
+        -Caja caja
+        -Empleado empleado
+        -BigDecimal fondoInicial
+        -LocalDateTime fechaApertura
+        -LocalDateTime fechaCierre
+        -BigDecimal efectivoContado
+        -EstadoSesionCaja estado
+
+        +abrir(Caja caja, Empleado empleado, BigDecimal fondoInicial) SesionCaja$
+        +estaAbierta() Boolean
+        +cerrar(BigDecimal efectivoContado, LocalDateTime fechaCierre) void
+    }
+    class EstadoSesionCaja {
+        <<enumeration>>
+        ABIERTA
+        CERRADA
+    }
+    class MovimientoCaja {
+        -Long id
+        -SesionCaja sesionCaja
+        -Pago pago
+        -Usuario usuario
+        -TipoMovimientoCaja tipo
+        -BigDecimal monto
+        -String motivo
+        -LocalDateTime fechaHora
+
+        +crearIngreso(Pago pago, Usuario usuario) MovimientoCaja$
+        +crearRetiro(SesionCaja sesionCaja, Usuario usuario, BigDecimal monto, String motivo) MovimientoCaja$
+        +esIngreso() Boolean
+        +esRetiro() Boolean
+    }
+    class TipoMovimientoCaja {
+        <<enumeration>>
+        INGRESO_COBRO
+        RETIRO
+    }
+    class Empleado {
+        -Long id
+        -Usuario usuario
+        -Sucursal sucursal
+        -String codigo
+        -String nombres
+        -String apellidos
+        -Boolean activo
+        -LocalDateTime creadoEn
+
+        +activar() void
+        +desactivar() void
+    }
+    class BitacoraOperacion{
+        -Long id
+        -Usuario usuario
+        -TipoOperacion tipoOperacion
+        -String entidadAfectada
+        -Long registroAfectadoId
+        -String descripcion
+        -ResultadoOperacion resultado
+        -LocalDateTime fechaHora
+
+        +registrar(Usuario usuario, TipoOperacion tipoOperacion, String entidadAfectada, Long registroAfectadoId, String descripcion, ResultadoOperacion resultado) BitacoraOperacion$
+        +esDeTipo(TipoOperacion tipoOperacion) Boolean
+    }
+    class ResultadoOperacion {
+        <<enumeration>>
+        EXITOSO
+        FALLIDO
+    }
+    class TipoOperacion {
+        <<enumeration>>
+        APERTURA_CAJA
+        CIERRE_CAJA
+        COBRO_FACTURA
+        RETIRO_EFECTIVO
+    }
+    class Usuario {
+        -Long id
+        -String nombreUsuario
+        -String claveHash
+        -Boolean activo
+        -LocalDateTime creadoEn
+
+        +activar() void
+        +desactivar() void
+        +cambiarClaveHash(String nuevaClaveHash) void
+    }
+    class Rol {
+        -Long id
+        -String codigo
+        -String descripcion
+        -Boolean activo
+        -LocalDateTime creadoEn
+
+        +activar() void
+        +desactivar() void
+    }
+    class UsuarioRol {
+        -Long id
+        -Usuario usuario
+        -Rol rol
+        -LocalDateTime fechaHora
+
+        +asignar(Usuario usuario, Rol rol) UsuarioRol$
+        +correspondeA(Rol rol) Boolean
+    }

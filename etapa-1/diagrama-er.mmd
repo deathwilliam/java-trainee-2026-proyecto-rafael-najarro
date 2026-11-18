@@ -1,0 +1,151 @@
+erDiagram
+    proveedor ||--o{ servicio : ofrece
+    servicio ||--o{ cuenta_servicio : identifica
+    cliente ||--o{ cuenta_servicio : posee
+    cuenta_servicio ||--o{ factura : recibe
+    factura ||--o| pago : se_cobra_con
+    sucursal ||--o{ caja : contiene
+    sucursal ||--o{ empleado : emplea
+    caja ||--o{ sesion_caja : registra
+    empleado ||--o{ sesion_caja : opera
+    sesion_caja ||--o{ pago : procesa
+    sesion_caja ||--o{ movimiento_caja : registra
+    pago |o--|| movimiento_caja : genera
+    usuario ||--o{ movimiento_caja : ejecuta
+    usuario ||--o{ bitacora_operacion : realiza
+    usuario |o--o| cliente : habilita_consulta
+    usuario ||--o| empleado : habilita_operacion
+    usuario ||--o{ usuario_rol : recibe
+    rol ||--o{ usuario_rol : se_asigna_en
+    cliente {
+        bigint id PK "autoincrementable"
+        bigint usuario_id FK, UK "NULL: solo si tiene acceso en linea, a usuario(id)"
+        varchar(10) dui UK "NOT NULL, formato 00000000-0"
+        varchar(80) nombres "NOT NULL"
+        varchar(80) apellidos "NOT NULL"
+        varchar(20) telefono "NULL"
+        varchar(120) correo "NULL"
+        boolean activo "NOT NULL, DEFAULT true"
+        timestamp creado_en "NOT NULL, DEFAULT now()"
+    }
+    proveedor {
+        bigint id PK "autoincrementable"
+        varchar(20) codigo UK "NOT NULL"
+        varchar(100) nombre "NOT NULL"
+        boolean activo "NOT NULL, DEFAULT true"
+        timestamp creado_en "NOT NULL, DEFAULT now()"
+    }
+    servicio {
+        bigint id PK "autoincrementable"
+        bigint proveedor_id FK "NOT NULL, a proveedor(id)"
+        varchar(20) codigo "NOT NULL, UNIQUE con proveedor_id"
+        varchar(80) nombre "NOT NULL"
+        numeric(12,2) comision "NOT NULL, CHECK >= 0"
+        boolean activo "NOT NULL, DEFAULT true"
+        timestamp creado_en "NOT NULL, DEFAULT now()"
+    }
+    cuenta_servicio {
+        bigint id PK "autoincrementable"
+        bigint cliente_id FK "NOT NULL, a cliente(id)"
+        bigint servicio_id FK "NOT NULL, a servicio(id)"
+        varchar(50) referencia "NOT NULL, UNIQUE con servicio_id"
+        varchar(80) descripcion "NULL"
+        varchar(20) estado "NOT NULL: ACTIVA, INACTIVA"
+        timestamp creado_en "NOT NULL, DEFAULT now()"
+    }
+    factura {
+        bigint id PK "autoincrementable"
+        bigint cuenta_servicio_id FK "NOT NULL, a cuenta_servicio(id)"
+        varchar(50) numero_factura "NOT NULL, UNIQUE con cuenta_servicio_id"
+        date periodo "NOT NULL, primer dia del mes facturado"
+        numeric(12,2) monto "NOT NULL, CHECK > 0"
+        date fecha_emision "NOT NULL"
+        date fecha_vencimiento "NOT NULL, CHECK >= fecha_emision"
+        varchar(20) estado "NOT NULL: PENDIENTE, PAGADA"
+        timestamp creado_en "NOT NULL, DEFAULT now()"
+    }
+    pago {
+        bigint id PK "autoincrementable"
+        bigint factura_id FK, UK "NOT NULL, a factura(id), un solo pago por factura"
+        bigint sesion_caja_id FK "NOT NULL, a sesion_caja(id)"
+        varchar(30) numero_comprobante UK "NOT NULL"
+        numeric(12,2) comision_aplicada "NOT NULL, CHECK >= 0, copia de la comision al cobrar"
+        numeric(12,2) efectivo_recibido "NOT NULL, CHECK > 0; servicio valida que cubra factura.monto + comision_aplicada"
+        timestamp fecha_hora "NOT NULL, DEFAULT now()"
+    }
+    sucursal {
+        bigint id PK "autoincrementable"
+        varchar(20) codigo UK "NOT NULL"
+        varchar(80) nombre "NOT NULL"
+        varchar(200) direccion "NOT NULL"
+        boolean activo "NOT NULL, DEFAULT true"
+        timestamp creado_en "NOT NULL, DEFAULT now()"
+    }
+    caja {
+        bigint id PK "autoincrementable"
+        bigint sucursal_id FK "NOT NULL, a sucursal(id)"
+        varchar(20) codigo "NOT NULL, UNIQUE con sucursal_id"
+        varchar(60) nombre "NOT NULL"
+        boolean activo "NOT NULL, DEFAULT true"
+        timestamp creado_en "NOT NULL, DEFAULT now()"
+    }
+    sesion_caja {
+        bigint id PK "autoincrementable"
+        bigint caja_id FK "NOT NULL, a caja(id), UNIQUE cuando estado = ABIERTA"
+        bigint empleado_id FK "NOT NULL, a empleado(id), UNIQUE cuando estado = ABIERTA"
+        numeric(12,2) fondo_inicial "NOT NULL, CHECK >= 0"
+        timestamp fecha_apertura "NOT NULL, DEFAULT now()"
+        timestamp fecha_cierre "NULL hasta cerrar, CHECK >= fecha_apertura"
+        numeric(12,2) efectivo_contado "NULL hasta cerrar, CHECK >= 0"
+        varchar(20) estado "NOT NULL: ABIERTA, CERRADA"
+    }
+    movimiento_caja {
+        bigint id PK "autoincrementable"
+        bigint sesion_caja_id FK "NOT NULL, a sesion_caja(id)"
+        bigint pago_id FK, UK "a pago(id), obligatorio en INGRESO_COBRO y NULL en RETIRO"
+        bigint usuario_id FK "NOT NULL, a usuario(id)"
+        varchar(20) tipo "NOT NULL: INGRESO_COBRO, RETIRO"
+        numeric(12,2) monto "NOT NULL, CHECK > 0, DERIVADO en INGRESO_COBRO (R9)"
+        varchar(200) motivo "NULL en INGRESO_COBRO; CHECK: obligatorio y no vacio en RETIRO"
+        timestamp fecha_hora "NOT NULL, DEFAULT now()"
+    }
+    empleado {
+        bigint id PK "autoincrementable"
+        bigint usuario_id FK, UK "NOT NULL, a usuario(id)"
+        bigint sucursal_id FK "NOT NULL, a sucursal(id)"
+        varchar(20) codigo UK "NOT NULL"
+        varchar(80) nombres "NOT NULL"
+        varchar(80) apellidos "NOT NULL"
+        boolean activo "NOT NULL, DEFAULT true"
+        timestamp creado_en "NOT NULL, DEFAULT now()"
+    }
+    bitacora_operacion {
+        bigint id PK "autoincrementable"
+        bigint usuario_id FK "NOT NULL, a usuario(id)"
+        varchar(30) tipo_operacion "NOT NULL: APERTURA_CAJA, CIERRE_CAJA, COBRO_FACTURA, RETIRO_EFECTIVO"
+        varchar(40) entidad_afectada "NOT NULL, nombre de la entidad afectada"
+        bigint registro_afectado_id "NOT NULL, CHECK > 0, referencia validada en servicio; no FK"
+        varchar(250) descripcion "NOT NULL"
+        varchar(20) resultado "NOT NULL: EXITOSO, FALLIDO"
+        timestamp fecha_hora "NOT NULL, DEFAULT now()"
+    }
+    usuario {
+        bigint id PK "autoincrementable"
+        varchar(50) nombre_usuario UK "NOT NULL"
+        varchar(255) clave_hash "NOT NULL, hash de la contrasena"
+        boolean activo "NOT NULL, DEFAULT true"
+        timestamp creado_en "NOT NULL, DEFAULT now()"
+    }
+    rol {
+        bigint id PK "autoincrementable"
+        varchar(20) codigo UK "NOT NULL, catalogo: ADMIN, ASESOR, CLIENTE"
+        varchar(150) descripcion "NOT NULL"
+        boolean activo "NOT NULL, DEFAULT true"
+        timestamp creado_en "NOT NULL, DEFAULT now()"
+    }
+    usuario_rol {
+        bigint id PK "autoincrementable"
+        bigint usuario_id FK "NOT NULL, a usuario(id), UNIQUE con rol_id"
+        bigint rol_id FK "NOT NULL, a rol(id)"
+        timestamp fecha_hora "NOT NULL, DEFAULT now()"
+    }

@@ -1,0 +1,40 @@
+# La API y su base, levantadas juntas con: docker compose up --build
+services:
+
+  # La base de datos: el mismo PostgreSQL de sipas-db, pero solo para este proyecto.
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: sipas
+      POSTGRES_USER: banco
+      POSTGRES_PASSWORD: banco123
+    ports:
+      # Solo para mirarla con DBeaver: puerto 5435 de su maquina. La API no usa este puerto.
+      - "5435:5432"
+    volumes:
+      - datos-sipas:/var/lib/postgresql/data
+    healthcheck:
+      # "Saludable" = PostgreSQL ya acepta conexiones. La API espera a esto para arrancar.
+      test: ["CMD-SHELL", "pg_isready -U banco -d sipas"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # La API: se construye con el Dockerfile de esta misma carpeta.
+  api:
+    build: .
+    environment:
+      # "db" es el nombre del servicio de arriba. Dentro de un contenedor, localhost es el propio contenedor.
+      DB_URL: jdbc:postgresql://db:5432/sipas
+      DB_USUARIO: banco
+      DB_CLAVE: banco123
+      # Sale del archivo .env, que NO se sube a GitHub. Si falta, Compose se niega a arrancar.
+      JWT_CLAVE: ${JWT_CLAVE:?Falta JWT_CLAVE. Creen el archivo .env con JWT_CLAVE=una-clave-de-32-bytes-o-mas}
+    ports:
+      - "8081:8081"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  datos-sipas:
